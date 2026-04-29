@@ -303,6 +303,7 @@
 // ═══════════════════════════════════════════════════
 const S = { T1:'t1', ANIM:'anim', SB:'sb', T2:'t2', DONE:'done' };
 let gs = S.T1;
+let firstHit = false; // tracks whether shot 1 landed
 
 const $  = id => document.getElementById(id);
 const startScreen  = $('start-screen');
@@ -352,6 +353,7 @@ $('again-btn').onclick = () => {
   hintEl.style.opacity = '1';
   resultScreen.classList.add('hidden');
   gameScreen.classList.remove('hidden');
+  firstHit = false;
   gs = S.T1;
 };
 
@@ -386,9 +388,9 @@ function launch(sx, sy, ex, ey, dt) {
   hintEl.style.opacity = '0';
   msgEl.textContent = '';
 
-  // Outcome: Throw 1 = 75% hit, Throw 2 = 33.3% hit
-  // → P(no prize)=25%, P(small)=50%, P(big)=25%
-  const isHit = Math.random() < (isFirst ? 0.75 : 0.3333);
+  // Both shots independent at 50%
+  // → P(0 hits)=25% no prize, P(1 hit)=50% small, P(2 hits)=25% big
+  const isHit = Math.random() < 0.5;
 
   // Board screen bounds (respects CSS scale)
   const br  = boardSvg.getBoundingClientRect();
@@ -478,13 +480,27 @@ function wobble(rot, cb) {
 //  OUTCOME HANDLERS
 // ═══════════════════════════════════════════════════
 function hit1() {
+  firstHit = true;
   msgEl.textContent = '🎯 Hit! Step back to 10 feet.';
   gs = S.SB;
   setTimeout(() => stepbackEl.classList.add('show'), 850);
 }
-function miss1() { gs = S.DONE; showResult('none');  }
-function hit2()  { gs = S.DONE; showResult('big');   }
-function miss2() { gs = S.DONE; showResult('small'); }
+function miss1() {
+  firstHit = false;
+  // Player stays at 6ft — still gets second throw
+  throwLabel.textContent = 'Throw 2 of 2 — 6 ft away';
+  msgEl.textContent = 'Missed! You still get a second throw.';
+  gs = S.T2;
+  setTimeout(() => { hintEl.style.opacity = '1'; }, 400);
+}
+function hit2()  {
+  gs = S.DONE;
+  showResult(firstHit ? 'big' : 'small');
+}
+function miss2() {
+  gs = S.DONE;
+  showResult(firstHit ? 'small' : 'none');
+}
 
 
 // ═══════════════════════════════════════════════════
