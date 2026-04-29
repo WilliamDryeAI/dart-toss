@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dart Toss</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
+      background: radial-gradient(ellipse at 50% 0%, #1a237e 0%, #0d0d0d 70%);
+      color: #fff;
+      height: 100dvh;
+    }
+
+    /* ── SCREENS ─────────────────────────────── */
+    .screen {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px; gap: 16px;
+      transition: opacity 0.35s ease;
+    }
+    .screen.hidden { opacity: 0; pointer-events: none; }
+
+    /* ── START ───────────────────────────────── */
+    #start-screen h1 {
+      font-size: 2.8rem; color: #FFD700;
+      text-shadow: 0 0 40px rgba(255,215,0,0.55);
+      letter-spacing: 3px; text-align: center;
+    }
+    .tagline { font-size: 0.95rem; color: rgba(255,255,255,0.65); text-align: center; }
+    .rules {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 14px 20px;
+      font-size: 0.88rem; line-height: 1.85;
+      color: rgba(255,255,255,0.85);
+      max-width: 300px; width: 100%;
+    }
+    .rules li { margin-left: 18px; }
+
+    /* ── GAME ────────────────────────────────── */
+    #game-screen { justify-content: flex-start; padding-top: 14px; gap: 8px; }
+
+    #throw-label {
+      font-size: 0.8rem; color: rgba(255,255,255,0.45);
+      letter-spacing: 1.5px; text-transform: uppercase;
+    }
+    #msg {
+      font-size: 0.98rem; text-align: center;
+      color: rgba(255,255,255,0.88); min-height: 26px;
+    }
+    #board-wrap {
+      position: relative;
+      transition: transform 1.3s cubic-bezier(0.4,0,0.2,1);
+      margin-top: 4px;
+    }
+    #board-svg {
+      width: 280px; height: 280px; display: block;
+      filter: drop-shadow(0 10px 40px rgba(0,0,0,0.7));
+    }
+    #dist-label {
+      font-size: 0.78rem; color: rgba(255,255,255,0.38);
+      letter-spacing: 1px; text-align: center;
+    }
+
+    .hint {
+      position: fixed; bottom: 36px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      animation: floatH 2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .hint span { font-size: 0.85rem; color: rgba(255,255,255,0.38); }
+    .hint .arr { font-size: 1.6rem; color: rgba(255,255,255,0.28); }
+    @keyframes floatH {
+      0%,100% { transform: translateX(-50%) translateY(0); }
+      50%      { transform: translateX(-50%) translateY(-7px); }
+    }
+
+    /* ── STEP-BACK ───────────────────────────── */
+    #stepback {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.88);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 18px; padding: 32px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.35s;
+    }
+    #stepback.show { opacity: 1; pointer-events: all; }
+    #stepback h2 { font-size: 2rem; color: #7FFF00; text-align: center; }
+    #stepback p {
+      color: rgba(255,255,255,0.8); text-align: center;
+      font-size: 1.05rem; line-height: 1.7;
+    }
+
+    /* ── RESULT ──────────────────────────────── */
+    #result-screen {
+      z-index: 400;
+      background: rgba(8,8,18,0.95);
+      backdrop-filter: blur(14px);
+    }
+    #prize-text {
+      font-size: 3rem; font-weight: bold; text-align: center;
+      animation: pop 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    #prize-sub { font-size: 1.05rem; color: rgba(255,255,255,0.6); text-align: center; }
+    @keyframes pop {
+      0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+      100% { transform: scale(1) rotate(0deg);   opacity: 1; }
+    }
+
+    /* ── BUTTON ──────────────────────────────── */
+    .btn {
+      background: linear-gradient(135deg, #FFD700, #FF8C00);
+      color: #111; border: none;
+      padding: 14px 36px;
+      font-size: 1.1rem; font-weight: bold;
+      border-radius: 50px; cursor: pointer;
+      box-shadow: 0 4px 24px rgba(255,140,0,0.35);
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.1s;
+    }
+    .btn:active { transform: scale(0.93); }
+
+    /* ── FLYING DART ─────────────────────────── */
+    #dart {
+      position: fixed;
+      width: 28px; height: 44px;
+      pointer-events: none; z-index: 200;
+      display: none;
+      transform-origin: 50% 50%;
+    }
+
+    /* ── CONFETTI ────────────────────────────── */
+    #confetti {
+      position: fixed; inset: 0;
+      pointer-events: none; z-index: 500;
+      width: 100%; height: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti"></canvas>
+
+<!-- ── START ──────────────────────────────────────── -->
+<div id="start-screen" class="screen">
+  <h1>DART TOSS</h1>
+  <p class="tagline">Carnival magnetic dart board game</p>
+  <ul class="rules">
+    <li>Swipe <strong>up</strong> to throw a dart</li>
+    <li>Hit the board (not the rim) → step to 10 ft</li>
+    <li>Hit <em>both</em> shots → 🏆 Big Prize</li>
+    <li>Hit <em>one</em> shot → 🎉 Small Prize</li>
+    <li>Miss first throw → No Prize</li>
+  </ul>
+  <button class="btn" id="start-btn">PLAY NOW</button>
+</div>
+
+<!-- ── GAME ───────────────────────────────────────── -->
+<div id="game-screen" class="screen hidden">
+  <div id="throw-label">Throw 1 of 2 — 6 ft away</div>
+  <div id="msg">Swipe up to throw!</div>
+  <div id="board-wrap">
+    <svg id="board-svg" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+      <g id="board-g"></g>
+      <g id="hit-markers"></g>
+    </svg>
+  </div>
+  <div id="dist-label">📏 6 feet away</div>
+  <div class="hint" id="hint">
+    <span>Swipe up to throw</span>
+    <div class="arr">↑</div>
+  </div>
+</div>
+
+<!-- ── STEP-BACK ───────────────────────────────────── -->
+<div id="stepback">
+  <h2>🎯 Great Shot!</h2>
+  <p>Step back to <strong style="color:#FFD700">10 feet</strong><br>for your second throw.</p>
+  <button class="btn" id="ready-btn">I'm Ready — Step Back</button>
+</div>
+
+<!-- ── RESULT ─────────────────────────────────────── -->
+<div id="result-screen" class="screen hidden">
+  <div id="prize-text"></div>
+  <div id="prize-sub"></div>
+  <button class="btn" id="again-btn" style="margin-top:16px">PLAY AGAIN</button>
+</div>
+
+<!-- ── FLYING DART ─────────────────────────────────── -->
+<div id="dart">
+  <svg viewBox="0 0 28 44" xmlns="http://www.w3.org/2000/svg">
+    <!-- tip at top so rotate(0deg) = pointing up -->
+    <polygon points="14,1 11,14 17,14" fill="#c0392b"/>
+    <rect x="11" y="14" width="6" height="13" rx="1" fill="#bdc3c7"/>
+    <rect x="11" y="17" width="6" height="2"  fill="#95a5a6"/>
+    <rect x="11" y="21" width="6" height="2"  fill="#95a5a6"/>
+    <rect x="13" y="27" width="2" height="8"  fill="#7f8c8d"/>
+    <polygon points="14,35  7,43 13,27" fill="#2471a3"/>
+    <polygon points="14,35 21,43 15,27" fill="#2980b9"/>
+  </svg>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  BUILD DART BOARD  (300×300 viewBox, centre 150,150)
+// ═══════════════════════════════════════════════════
+(function buildBoard() {
+  const CX = 150, CY = 150;
+
+  // Standard dart board proportions scaled to r=150
+  const R_TOTAL  = 150; // outer edge including 1-inch black rim
+  const R_PLAY   = 133; // inner edge of black rim = outer scoring edge
+  const R_DBL_IN = 127; // double ring inner edge
+  const R_TRP_O  = 84;  // triple ring outer edge
+  const R_TRP_I  = 77;  // triple ring inner edge
+  const R_B25    = 12;  // outer bull outer edge
+  const R_BULL   = 5;   // bullseye radius
+  const R_NUM    = 142; // number label radius (centre of rim)
+
+  const NUMS = [20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
+  const SEG  = 18;
+  const BASE = -90 - SEG / 2;
+  const rad  = d => d * Math.PI / 180;
+
+  function annulus(r1, r2, a, b) {
+    const [sa, sb] = [rad(a), rad(b)];
+    const pts = [
+      [CX + r2*Math.cos(sa), CY + r2*Math.sin(sa)],
+      [CX + r2*Math.cos(sb), CY + r2*Math.sin(sb)],
+      [CX + r1*Math.cos(sb), CY + r1*Math.sin(sb)],
+      [CX + r1*Math.cos(sa), CY + r1*Math.sin(sa)],
+    ];
+    return `M${pts[0]}A${r2},${r2},0,0,1,${pts[1]}L${pts[2]}A${r1},${r1},0,0,0,${pts[3]}Z`;
+  }
+
+  let h = '';
+
+  // Black rim (full circle background)
+  h += `<circle cx="${CX}" cy="${CY}" r="${R_TOTAL}" fill="#111"/>`;
+
+  // 20 segments
+  NUMS.forEach((num, i) => {
+    const a  = BASE + i * SEG;
+    const b  = a + SEG;
+    const ci = i % 2;
+
+    const singleCol = ci === 0 ? '#1c1c1c' : '#F0E6C8'; // black / cream
+    const ringCol   = ci === 0 ? '#c0392b' : '#1e8449'; // red  / green
+
+    h += `<path d="${annulus(R_DBL_IN, R_PLAY,   a, b)}" fill="${ringCol}"/>`;  // double
+    h += `<path d="${annulus(R_TRP_O,  R_DBL_IN, a, b)}" fill="${singleCol}"/>`; // single outer
+    h += `<path d="${annulus(R_TRP_I,  R_TRP_O,  a, b)}" fill="${ringCol}"/>`;  // triple
+    h += `<path d="${annulus(R_B25,    R_TRP_I,  a, b)}" fill="${singleCol}"/>`; // single inner
+
+    // Radial wire at segment boundary
+    const wa = rad(a);
+    h += `<line x1="${CX+R_B25*Math.cos(wa)}" y1="${CY+R_B25*Math.sin(wa)}"
+                x2="${CX+R_TOTAL*Math.cos(wa)}" y2="${CY+R_TOTAL*Math.sin(wa)}"
+                stroke="#555" stroke-width="0.7"/>`;
+
+    // Number label in rim
+    const ma = rad(a + SEG / 2);
+    h += `<text x="${CX+R_NUM*Math.cos(ma)}" y="${CY+R_NUM*Math.sin(ma)}"
+               text-anchor="middle" dominant-baseline="central"
+               font-family="Arial" font-weight="bold" font-size="10.5"
+               fill="#ffffff">${num}</text>`;
+  });
+
+  // Concentric ring wires
+  [R_PLAY, R_DBL_IN, R_TRP_O, R_TRP_I, R_B25].forEach(r => {
+    h += `<circle cx="${CX}" cy="${CY}" r="${r}" fill="none" stroke="#555" stroke-width="0.7"/>`;
+  });
+
+  // Outer bull (green) and bullseye (red)
+  h += `<circle cx="${CX}" cy="${CY}" r="${R_B25}" fill="#1e8449"/>`;
+  h += `<circle cx="${CX}" cy="${CY}" r="${R_BULL}" fill="#c0392b"/>`;
+  h += `<circle cx="${CX}" cy="${CY}" r="${R_B25}" fill="none" stroke="#555" stroke-width="0.7"/>`;
+  h += `<circle cx="${CX}" cy="${CY}" r="${R_BULL}" fill="none" stroke="#555" stroke-width="0.7"/>`;
+
+  document.getElementById('board-g').innerHTML = h;
+})();
+
+
+// ═══════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════
+const S = { T1:'t1', ANIM:'anim', SB:'sb', T2:'t2', DONE:'done' };
+let gs = S.T1;
+
+const $  = id => document.getElementById(id);
+const startScreen  = $('start-screen');
+const gameScreen   = $('game-screen');
+const resultScreen = $('result-screen');
+const stepbackEl   = $('stepback');
+const throwLabel   = $('throw-label');
+const msgEl        = $('msg');
+const boardWrap    = $('board-wrap');
+const distLabel    = $('dist-label');
+const hintEl       = $('hint');
+const dartEl       = $('dart');
+const hitMarkers   = $('hit-markers');
+const boardSvg     = $('board-svg');
+const prizeText    = $('prize-text');
+const prizeSub     = $('prize-sub');
+const confCvs      = $('confetti');
+
+
+// ═══════════════════════════════════════════════════
+//  BUTTONS
+// ═══════════════════════════════════════════════════
+$('start-btn').onclick = () => {
+  startScreen.classList.add('hidden');
+  gameScreen.classList.remove('hidden');
+  gs = S.T1;
+};
+
+$('ready-btn').onclick = () => {
+  stepbackEl.classList.remove('show');
+  boardWrap.style.transform = 'scale(0.6)';
+  distLabel.textContent = '📏 10 feet away';
+  throwLabel.textContent = 'Throw 2 of 2 — 10 ft away';
+  msgEl.textContent = 'Now swipe for your second throw!';
+  hintEl.style.opacity = '1';
+  gs = S.T2;
+};
+
+$('again-btn').onclick = () => {
+  stopConfetti();
+  hitMarkers.innerHTML = '';
+  dartEl.style.display = 'none';
+  boardWrap.style.transform = 'scale(1)';
+  distLabel.textContent = '📏 6 feet away';
+  throwLabel.textContent = 'Throw 1 of 2 — 6 ft away';
+  msgEl.textContent = 'Swipe up to throw!';
+  hintEl.style.opacity = '1';
+  resultScreen.classList.add('hidden');
+  gameScreen.classList.remove('hidden');
+  gs = S.T1;
+};
+
+
+// ═══════════════════════════════════════════════════
+//  SWIPE DETECTION
+// ═══════════════════════════════════════════════════
+let tx0 = 0, ty0 = 0, tt0 = 0;
+
+function onDown(x, y) {
+  if (gs !== S.T1 && gs !== S.T2) return;
+  tx0 = x; ty0 = y; tt0 = Date.now();
+}
+function onUp(x, y) {
+  if (gs !== S.T1 && gs !== S.T2) return;
+  const dx = x - tx0, dy = y - ty0, dt = Date.now() - tt0;
+  if (dy < -40 && Math.hypot(dx, dy) > 40 && dt < 700) launch(tx0, ty0, x, y, dt);
+}
+
+document.addEventListener('touchstart', e => onDown(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+document.addEventListener('touchend',   e => onUp(e.changedTouches[0].clientX, e.changedTouches[0].clientY), { passive: true });
+document.addEventListener('mousedown',  e => onDown(e.clientX, e.clientY));
+document.addEventListener('mouseup',    e => onUp(e.clientX, e.clientY));
+
+
+// ═══════════════════════════════════════════════════
+//  THROW
+// ═══════════════════════════════════════════════════
+function launch(sx, sy, ex, ey, dt) {
+  const isFirst = gs === S.T1;
+  gs = S.ANIM;
+  hintEl.style.opacity = '0';
+  msgEl.textContent = '';
+
+  // Outcome: Throw 1 = 75% hit, Throw 2 = 33.3% hit
+  // → P(no prize)=25%, P(small)=50%, P(big)=25%
+  const isHit = Math.random() < (isFirst ? 0.75 : 0.3333);
+
+  // Board screen bounds (respects CSS scale)
+  const br  = boardSvg.getBoundingClientRect();
+  const bcx = br.left + br.width  / 2;
+  const bcy = br.top  + br.height / 2;
+  const bR  = br.width / 2;
+
+  // Playable radius = inner edge of 1-inch rim (133/150 of total)
+  const playR = bR * (133 / 150);
+
+  // Landing position
+  let lx, ly, isRim = false;
+  if (isHit) {
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.sqrt(Math.random()) * playR * 0.92;
+    lx = bcx + Math.cos(a) * r;
+    ly = bcy + Math.sin(a) * r;
+  } else if (Math.random() < 0.35) {
+    isRim = true;
+    const a = Math.random() * Math.PI * 2;
+    const r = playR + (bR - playR) * Math.random();
+    lx = bcx + Math.cos(a) * r;
+    ly = bcy + Math.sin(a) * r;
+  } else {
+    const a = Math.random() * Math.PI * 2;
+    const r = bR + 35 + Math.random() * 55;
+    lx = bcx + Math.cos(a) * r;
+    ly = bcy + Math.sin(a) * r;
+  }
+
+  // Dart rotation so tip (SVG top) points toward landing
+  const rot = Math.atan2(ly - sy, lx - sx) * 180 / Math.PI + 90;
+
+  dartEl.style.cssText =
+    `display:block;left:${sx-14}px;top:${sy-22}px;` +
+    `opacity:1;transition:none;transform-origin:50% 50%;transform:rotate(${rot}deg)`;
+
+  const spd   = Math.hypot(ex - sx, ey - sy) / dt;
+  const flyMs = Math.max(280, Math.min(520, 520 - spd * 100));
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    dartEl.style.transition = `left ${flyMs}ms ease-out, top ${flyMs}ms ease-out`;
+    dartEl.style.left = (lx - 14) + 'px';
+    dartEl.style.top  = (ly - 22) + 'px';
+  }));
+
+  setTimeout(() => {
+    if (isHit) {
+      wobble(rot, () => {
+        // Add hit marker to board SVG (scales with board)
+        const svgX = (lx - br.left) / br.width  * 300;
+        const svgY = (ly - br.top)  / br.height * 300;
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('transform', `translate(${svgX},${svgY})`);
+        g.innerHTML =
+          `<circle r="5.5" fill="#222" stroke="#FFD700" stroke-width="1.8"/>` +
+          `<circle r="2.2" fill="#FFD700"/>`;
+        hitMarkers.appendChild(g);
+        dartEl.style.display = 'none';
+        isFirst ? hit1() : hit2();
+      });
+    } else {
+      if (isRim) msgEl.textContent = 'Hit the rim — dart slid off!';
+      // Magnetic dart slides/falls off
+      dartEl.style.transition = 'top 0.6s ease-in, opacity 0.4s ease-in 0.12s';
+      dartEl.style.top     = (ly + 140) + 'px';
+      dartEl.style.opacity = '0';
+      setTimeout(() => { dartEl.style.display = 'none'; isFirst ? miss1() : miss2(); }, 740);
+    }
+  }, flyMs + 40);
+}
+
+function wobble(rot, cb) {
+  dartEl.style.transition = 'transform 0.11s ease-in-out';
+  dartEl.style.transform  = `rotate(${rot + 10}deg)`;
+  setTimeout(() => {
+    dartEl.style.transform = `rotate(${rot - 7}deg)`;
+    setTimeout(() => {
+      dartEl.style.transform = `rotate(${rot}deg)`;
+      setTimeout(cb, 115);
+    }, 115);
+  }, 115);
+}
+
+
+// ═══════════════════════════════════════════════════
+//  OUTCOME HANDLERS
+// ═══════════════════════════════════════════════════
+function hit1() {
+  msgEl.textContent = '🎯 Hit! Step back to 10 feet.';
+  gs = S.SB;
+  setTimeout(() => stepbackEl.classList.add('show'), 850);
+}
+function miss1() { gs = S.DONE; showResult('none');  }
+function hit2()  { gs = S.DONE; showResult('big');   }
+function miss2() { gs = S.DONE; showResult('small'); }
+
+
+// ═══════════════════════════════════════════════════
+//  RESULT SCREEN
+// ═══════════════════════════════════════════════════
+function showResult(type) {
+  setTimeout(() => {
+    gameScreen.classList.add('hidden');
+    resultScreen.classList.remove('hidden');
+
+    prizeText.style.animation = 'none';
+    void prizeText.offsetWidth;
+    prizeText.style.animation = 'pop 0.6s cubic-bezier(0.34,1.56,0.64,1) both';
+
+    if (type === 'big') {
+      prizeText.style.color = '#FFD700';
+      prizeText.textContent = '🏆 BIG PRIZE! 🏆';
+      prizeSub.textContent  = 'Two for two — incredible!';
+      startConfetti();
+    } else if (type === 'small') {
+      prizeText.style.color = '#7FFF00';
+      prizeText.textContent = '🎉 Small Prize!';
+      prizeSub.textContent  = 'Nice first shot — you earned it!';
+    } else {
+      prizeText.style.color = '#888';
+      prizeText.textContent = 'No Prize';
+      prizeSub.textContent  = 'Better luck next time!';
+    }
+  }, 400);
+}
+
+
+// ═══════════════════════════════════════════════════
+//  CONFETTI
+// ═══════════════════════════════════════════════════
+let rafId = null, parts = [];
+
+function startConfetti() {
+  confCvs.width  = window.innerWidth;
+  confCvs.height = window.innerHeight;
+  const ctx  = confCvs.getContext('2d');
+  const cols = ['#FFD700','#FF6B6B','#4FC3F7','#81C784','#CE93D8','#FF8A65','#80DEEA','#FFF176'];
+
+  parts = Array.from({ length: 220 }, () => ({
+    x:   Math.random() * confCvs.width,
+    y:  -30 - Math.random() * confCvs.height * 0.5,
+    vx: (Math.random() - 0.5) * 4,
+    vy:  2 + Math.random() * 5,
+    w:   7 + Math.random() * 9,
+    h:   3 + Math.random() * 5,
+    col: cols[Math.floor(Math.random() * cols.length)],
+    rot: Math.random() * 360,
+    rv: (Math.random() - 0.5) * 12,
+    wav: Math.random() * Math.PI * 2,
+  }));
+
+  (function loop() {
+    ctx.clearRect(0, 0, confCvs.width, confCvs.height);
+    parts.forEach(p => {
+      p.wav += 0.06;
+      p.x   += p.vx + Math.sin(p.wav) * 0.6;
+      p.y   += p.vy;
+      p.rot += p.rv;
+      if (p.y > confCvs.height + 20) { p.y = -20; p.x = Math.random() * confCvs.width; }
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.col;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+    rafId = requestAnimationFrame(loop);
+  })();
+}
+
+function stopConfetti() {
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  confCvs.getContext('2d').clearRect(0, 0, confCvs.width, confCvs.height);
+  parts = [];
+}
+</script>
+</body>
+</html>
