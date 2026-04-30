@@ -549,13 +549,15 @@ function onLanded(isHit,isRim,isFirst,lx,ly,br){
     });
   } else {
     if(isRim){ sndRim(); msgEl.textContent='Hit the rim — dart slid off!'; }
-    const curRot=parseFloat((dartFly.style.transform.match(/rotate\(([\d.-]+)deg\)/)||[,0])[1]);
+    const missTf=dartFly.style.transform;
+    const curRot=parseFloat((missTf.match(/rotate\(([\d.-]+)deg\)/)||[,0])[1]);
+    const curScl=parseFloat((missTf.match(/scale\(([\d.]+)\)/)||[,1])[1]);
     setTimeout(()=>{
       dartFly.style.transition='top 0.7s ease-in,left 0.5s ease-out,opacity 0.4s ease-in 0.22s,transform 0.7s ease-in';
       dartFly.style.top =(ly+170)+'px';
       dartFly.style.left=(lx+(Math.random()-0.5)*50-7)+'px';
       dartFly.style.opacity='0';
-      dartFly.style.transform=`rotate(${curRot+105}deg)`;
+      dartFly.style.transform=`rotate(${curRot+105}deg) scale(${curScl})`;
     },55);
     setTimeout(()=>{ dartFly.style.cssText='display:none;transition:none'; isFirst?miss1():miss2(); },860);
   }
@@ -601,12 +603,15 @@ function addStuckDart(lx,ly){
 //  WOBBLE  — dart quivers on impact then settles
 // ═══════════════════════════════════════════════════════
 function wobble(el,cb){
-  const rot=parseFloat((el.style.transform.match(/rotate\(([\d.-]+)deg\)/)||[,0])[1]);
+  const t=el.style.transform;
+  const rot=parseFloat((t.match(/rotate\(([\d.-]+)deg\)/)||[,0])[1]);
+  const scl=parseFloat((t.match(/scale\(([\d.]+)\)/)||[,1])[1]);
+  const tf=r=>`rotate(${r}deg) scale(${scl})`;
   el.style.transition='transform 0.09s ease-in-out';
-  el.style.transform=`rotate(${rot+12}deg)`;
-  setTimeout(()=>{ el.style.transform=`rotate(${rot-8}deg)`;
-  setTimeout(()=>{ el.style.transform=`rotate(${rot+4}deg)`;
-  setTimeout(()=>{ el.style.transform=`rotate(${rot}deg)`;
+  el.style.transform=tf(rot+12);
+  setTimeout(()=>{ el.style.transform=tf(rot-8);
+  setTimeout(()=>{ el.style.transform=tf(rot+4);
+  setTimeout(()=>{ el.style.transform=tf(rot);
   setTimeout(cb,95); },90); },90); },90);
 }
 
