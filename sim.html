@@ -397,11 +397,11 @@
 
     <div class="theory-bar">
       <strong>Theoretical Probabilities:</strong>
-      <span class="t-big">Big Prize = 0.28</span>
+      <span class="t-big">Big Prize = 0.6241</span>
       &nbsp;|&nbsp;
-      <span class="t-small">Small Prize = 0.58</span>
+      <span class="t-small">Small Prize = 0.3318</span>
       &nbsp;|&nbsp;
-      <span class="t-none">No Prize = 0.14</span>
+      <span class="t-none">No Prize = 0.0441</span>
     </div>
 
   </div>
@@ -521,7 +521,7 @@ function syncSlider() {
 // ═══════════════════════════════════════════════════
 //  PROBABILITY
 // ═══════════════════════════════════════════════════
-const P_BIG = 0.28, P_SMALL = 0.58;
+const P_BIG = 0.6241, P_SMALL = 0.3318; // 0.79² and 2×0.79×0.21
 
 function pickOutcome() {
   const r = Math.random();
