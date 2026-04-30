@@ -606,13 +606,30 @@ function wobble(el,cb){
   const t=el.style.transform;
   const rot=parseFloat((t.match(/rotate\(([\d.-]+)deg\)/)||[,0])[1]);
   const scl=parseFloat((t.match(/scale\(([\d.]+)\)/)||[,1])[1]);
+  const rotRad=rot*Math.PI/180;
+
+  // Shift pivot from element center → dart tip so the planted point stays still.
+  // Tip is at (7,0) in the 14×58 element; center pivot is (7,29).
+  // tipScreen = center + rotate(rot)*(0,−29)
+  const cx=parseFloat(el.style.left)+7;
+  const cy=parseFloat(el.style.top)+29;
+  const tipX=cx+29*Math.sin(rotRad);
+  const tipY=cy-29*Math.cos(rotRad);
+  el.style.left=(tipX-7)+'px';
+  el.style.top =tipY+'px';
+  el.style.transformOrigin='50% 0%'; // tip is now the pivot — no visual jump
+
+  // Damped oscillation: large initial swing, settling quickly like a real dart
   const tf=r=>`rotate(${r}deg) scale(${scl})`;
-  el.style.transition='transform 0.09s ease-in-out';
-  el.style.transform=tf(rot+12);
-  setTimeout(()=>{ el.style.transform=tf(rot-8);
-  setTimeout(()=>{ el.style.transform=tf(rot+4);
+  el.style.transition='transform 0.06s ease-out';
+  el.style.transform=tf(rot+16);
+  setTimeout(()=>{ el.style.transition='transform 0.07s ease-in-out';
+  el.style.transform=tf(rot-10);
+  setTimeout(()=>{ el.style.transform=tf(rot+6);
+  setTimeout(()=>{ el.style.transform=tf(rot-3);
+  setTimeout(()=>{ el.style.transform=tf(rot+1);
   setTimeout(()=>{ el.style.transform=tf(rot);
-  setTimeout(cb,95); },90); },90); },90);
+  setTimeout(cb,55); },60); },65); },68); },68); },62);
 }
 
 
