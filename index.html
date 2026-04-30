@@ -507,26 +507,26 @@ function launch(swipeDt){
   dartFly.style.cssText=
     `display:block;left:${sx-7}px;top:${sy-29}px;opacity:1;transition:none;transform-origin:50% 50%;transform:rotate(0deg)`;
 
-  // Bezier control point — arc peak
-  const cpx=(sx+lx)/2+(Math.random()-0.5)*18;
-  const cpy=Math.min(sy,ly)-62;
+  // Physics: x(t)=sx+vx·t  y(t)=sy+vy·t+½g·t²
+  // Solve for vx,vy so the dart hits (lx,ly) at t=T
+  const T=Math.max(0.28,Math.min(0.52,0.55-(200/Math.max(swipeDt,40))*0.065));
+  const g=2000; // px/s², simulated gravity (screen-down)
+  const vx=(lx-sx)/T;
+  const vy=(ly-sy-0.5*g*T*T)/T;
 
-  const flyMs=Math.max(280,Math.min(520,540-(200/Math.max(swipeDt,40))*65));
   const t0=performance.now();
-
   (function frame(now){
-    let t=Math.min((now-t0)/flyMs,1);
-    const e=1-Math.pow(1-t,2.4);
-    const x=(1-e)*(1-e)*sx+2*(1-e)*e*cpx+e*e*lx;
-    const y=(1-e)*(1-e)*sy+2*(1-e)*e*cpy+e*e*ly;
-    const tdx=2*(1-e)*(cpx-sx)+2*e*(lx-cpx);
-    const tdy=2*(1-e)*(cpy-sy)+2*e*(ly-cpy);
-    const rot=Math.atan2(tdy,tdx)*180/Math.PI+90;
+    const elapsed=Math.min((now-t0)/1000,T); // seconds
+    const x=sx+vx*elapsed;
+    const y=sy+vy*elapsed+0.5*g*elapsed*elapsed;
+    const dvx=vx;
+    const dvy=vy+g*elapsed; // velocity at this instant
+    const rot=Math.atan2(dvy,dvx)*180/Math.PI+90;
     dartFly.style.left=(x-7)+'px';
     dartFly.style.top =(y-29)+'px';
     dartFly.style.transform=`rotate(${rot}deg)`;
-    if(t<1) requestAnimationFrame(frame);
-    else    onLanded(isHit,isRim,isFirst,lx,ly,br);
+    if(elapsed<T) requestAnimationFrame(frame);
+    else          onLanded(isHit,isRim,isFirst,lx,ly,br);
   })(t0);
 }
 
