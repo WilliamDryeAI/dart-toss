@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dart Toss — Probability Sim</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
+      background-color: #120800;
+      background-image:
+        radial-gradient(ellipse 90% 30% at 50% 0%, rgba(255,160,30,0.28) 0%, transparent 100%),
+        linear-gradient(170deg, #2e1205 0%, #1a0a02 55%, #0e0601 100%);
+      color: #fff;
+      min-height: 100vh;
+      padding: 14px 16px 30px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* ── HEADER ───────────────────────────────────── */
+    .page-header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .page-header h1 {
+      font-size: 1.35rem;
+      color: #FFD700;
+      text-shadow: 0 0 30px rgba(255,200,40,0.5);
+      letter-spacing: 2px;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 5px;
+      font-size: 0.75rem;
+      color: rgba(255,190,80,0.45);
+      text-decoration: none;
+      letter-spacing: 0.5px;
+      font-family: Arial, sans-serif;
+    }
+    .back-link:hover { color: rgba(255,190,80,0.75); }
+
+    /* ── CONTROLS ─────────────────────────────────── */
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(200,140,40,0.2);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      justify-content: center;
+    }
+    .ctrl-group { display: flex; align-items: center; gap: 7px; }
+    .ctrl-label {
+      font-size: 0.72rem;
+      color: rgba(255,190,80,0.55);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-family: Arial, sans-serif;
+    }
+    .attempts-badge {
+      background: rgba(255,215,0,0.12);
+      border: 1px solid rgba(255,215,0,0.35);
+      color: #FFD700;
+      font-size: 1.2rem;
+      font-weight: bold;
+      min-width: 42px;
+      text-align: center;
+      border-radius: 6px;
+      padding: 2px 8px;
+    }
+    input[type="range"] { width: 150px; accent-color: #FFD700; }
+
+    .speed-btns { display: flex; gap: 5px; }
+    .speed-btn {
+      padding: 5px 12px;
+      border: 1px solid rgba(255,190,80,0.25);
+      background: transparent;
+      color: rgba(255,190,80,0.5);
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .speed-btn.active {
+      background: rgba(255,190,80,0.18);
+      border-color: rgba(255,190,80,0.65);
+      color: #FFD700;
+    }
+
+    .sim-btn {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: bold;
+      font-family: inherit;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .sim-btn:active { transform: scale(0.93); }
+    .btn-start { background: linear-gradient(135deg,#FFD700,#FF8C00); color: #111; }
+    .btn-reset  { background: rgba(255,255,255,0.08); color: rgba(255,210,150,0.75); border: 1px solid rgba(255,210,150,0.25); }
+    .sim-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    /* ── MAIN LAYOUT ──────────────────────────────── */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    @media (max-width: 680px) {
+      .main-layout { grid-template-columns: 1fr; }
+    }
+
+    /* ── BOARD PANEL ──────────────────────────────── */
+    .board-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .board-status {
+      font-size: 0.72rem;
+      color: rgba(255,190,80,0.4);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      min-height: 16px;
+      font-family: Arial, sans-serif;
+    }
+    .board-msg {
+      font-size: 0.88rem;
+      color: rgba(255,220,170,0.85);
+      text-align: center;
+      min-height: 20px;
+    }
+    .result-flash {
+      font-size: 1.45rem;
+      font-weight: bold;
+      text-align: center;
+      min-height: 34px;
+      transition: opacity 0.2s;
+      letter-spacing: 1px;
+    }
+    .result-flash.big   { color: #FFD700; text-shadow: 0 0 22px rgba(255,215,0,0.65); }
+    .result-flash.small { color: #7FFF00; text-shadow: 0 0 18px rgba(127,255,0,0.45); }
+    .result-flash.none  { color: #999; }
+
+    /* Cabinet */
+    #cabinet { position: relative; transition: transform 0.5s cubic-bezier(0.4,0,0.2,1); }
+    #surround {
+      padding: 14px; border-radius: 10px; position: relative;
+      background:
+        repeating-linear-gradient(-45deg, transparent 0px, transparent 6px, rgba(0,0,0,0.06) 6px, rgba(0,0,0,0.06) 7px),
+        linear-gradient(160deg, #5a3118 0%, #3d1e0a 45%, #281305 100%);
+      box-shadow:
+        inset 0 1px 5px rgba(255,200,80,0.12),
+        inset 0 -3px 8px rgba(0,0,0,0.55),
+        0 0 0 2px rgba(160,90,20,0.3),
+        0 12px 50px rgba(0,0,0,0.9);
+    }
+    #surround::before, #surround::after {
+      content:''; position:absolute;
+      width:9px; height:9px; border-radius:50%;
+      background:radial-gradient(circle at 35% 35%, #d4a84b, #7a4f10);
+      border:1px solid rgba(0,0,0,0.5);
+      box-shadow:0 1px 3px rgba(0,0,0,0.7);
+      top:9px;
+    }
+    #surround::before { left:9px; }
+    #surround::after  { right:9px; }
+    .bolt-bl,.bolt-br {
+      position:absolute; width:9px; height:9px; border-radius:50%;
+      background:radial-gradient(circle at 35% 35%, #d4a84b, #7a4f10);
+      border:1px solid rgba(0,0,0,0.5);
+      box-shadow:0 1px 3px rgba(0,0,0,0.7);
+      bottom:9px;
+    }
+    .bolt-bl { left:9px; } .bolt-br { right:9px; }
+    #lamp {
+      position:absolute; top:-22px; left:50%; transform:translateX(-50%);
+      width:50px; height:15px;
+      background:linear-gradient(180deg,#c09040,#8a6820);
+      border-radius:5px 5px 3px 3px;
+      box-shadow:0 -2px 6px rgba(0,0,0,0.5), 0 2px 24px rgba(255,200,60,0.35);
+      z-index:2;
+    }
+    #lamp::after {
+      content:''; position:absolute; top:13px; left:-18px;
+      width:86px; height:60px;
+      background:radial-gradient(ellipse at 50% 0%, rgba(255,200,60,0.22) 0%, transparent 80%);
+      pointer-events:none;
+    }
+    #board-svg { width:220px; height:220px; display:block;
+      filter:drop-shadow(0 0 18px rgba(255,180,40,0.1)) drop-shadow(0 8px 28px rgba(0,0,0,0.9)); }
+
+    /* ── CHART PANEL ──────────────────────────────── */
+    .chart-panel { display: flex; flex-direction: column; gap: 10px; }
+    .panel-title {
+      font-size: 0.68rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: rgba(255,190,80,0.45);
+      border-bottom: 1px solid rgba(255,190,80,0.18);
+      padding-bottom: 4px;
+      margin-bottom: 4px;
+      font-family: Arial, sans-serif;
+    }
+
+    table { border-collapse: collapse; width: 100%; }
+
+    /* Recording table */
+    .rec-table th {
+      background: rgba(0,0,0,0.55);
+      color: rgba(255,190,80,0.75);
+      padding: 5px 3px;
+      text-align: center;
+      border: 1px solid rgba(255,190,80,0.12);
+      font-size: 10.5px;
+      letter-spacing: 0.3px;
+    }
+    .rec-table td {
+      border: 1px solid rgba(255,255,255,0.07);
+      padding: 4px 3px;
+      text-align: center;
+      font-size: 11.5px;
+      font-weight: bold;
+      height: 26px;
+    }
+    .cell-num {
+      background: rgba(0,0,0,0.3);
+      color: rgba(255,255,255,0.22);
+      font-size: 10px;
+      font-weight: normal;
+      width: 22px;
+      font-family: Arial, sans-serif;
+    }
+    .cell-big   { background: rgba(255,215,0,0.18);  color: #FFD700; }
+    .cell-small { background: rgba(127,255,0,0.13);  color: #7FFF00; }
+    .cell-none  { background: rgba(255,80,80,0.1);   color: #ff9999; }
+    .cell-empty { background: transparent; }
+    .cell-active {
+      background: rgba(255,255,255,0.06) !important;
+      animation: cellPulse 0.7s ease-in-out infinite;
+    }
+    @keyframes cellPulse { 0%,100% { opacity:0.45; } 50% { opacity:1; } }
+
+    /* Probability table */
+    .prob-table th {
+      background: rgba(0,0,0,0.55);
+      color: rgba(255,190,80,0.75);
+      padding: 5px 6px;
+      text-align: center;
+      border: 1px solid rgba(255,190,80,0.12);
+      font-size: 10.5px;
+    }
+    .prob-table td {
+      border: 1px solid rgba(255,255,255,0.07);
+      padding: 5px 6px;
+      text-align: center;
+      font-size: 11.5px;
+    }
+    .prob-label {
+      background: rgba(0,0,0,0.3);
+      text-align: left !important;
+      color: rgba(255,190,80,0.65);
+      font-size: 10.5px;
+      padding-left: 10px !important;
+      font-family: Arial, sans-serif;
+    }
+    .val-big   { color: #FFD700; font-weight: bold; }
+    .val-small { color: #7FFF00; font-weight: bold; }
+    .val-none  { color: #ff9999; font-weight: bold; }
+    .val-em    { color: rgba(255,255,255,0.18); font-size: 11px; }
+
+    .theory-bar {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,190,80,0.12);
+      border-radius: 7px;
+      padding: 7px 12px;
+      font-size: 10.5px;
+      color: rgba(255,190,80,0.45);
+      line-height: 1.9;
+      font-family: Arial, sans-serif;
+    }
+    .theory-bar strong { color: rgba(255,190,80,0.65); display:block; margin-bottom: 2px; }
+    .t-big   { color: #FFD700; font-weight: bold; }
+    .t-small { color: #7FFF00; font-weight: bold; }
+    .t-none  { color: #ff9999; font-weight: bold; }
+
+    /* ── FLYING DART ──────────────────────────────── */
+    #dart-fly {
+      position:fixed; width:14px; height:58px;
+      pointer-events:none; z-index:200; display:none;
+      transform-origin:50% 50%;
+    }
+
+    /* ── IMPACT FLASH ─────────────────────────────── */
+    @keyframes flashOut {
+      0%   { width:0;    height:0;    opacity:1; }
+      35%  { width:44px; height:44px; opacity:0.85; }
+      100% { width:68px; height:68px; opacity:0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="page-header">
+  <h1>DART TOSS — PROBABILITY SIM</h1>
+  <a class="back-link" href="index.html">← Back to Game</a>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls-bar">
+  <div class="ctrl-group">
+    <span class="ctrl-label">Attempts</span>
+    <input type="range" id="slider" min="1" max="50" value="10" oninput="syncSlider()">
+    <div class="attempts-badge" id="badge">10</div>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Speed</span>
+    <div class="speed-btns">
+      <button class="speed-btn" onclick="setSpeed('slow')">Slow</button>
+      <button class="speed-btn active" onclick="setSpeed('medium')">Medium</button>
+      <button class="speed-btn" onclick="setSpeed('fast')">Fast</button>
+    </div>
+  </div>
+  <div class="ctrl-group">
+    <button class="sim-btn btn-start" id="startBtn" onclick="startSim()">Start Simulation</button>
+    <button class="sim-btn btn-reset" onclick="resetSim()">Reset</button>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="main-layout">
+
+  <!-- LEFT: BOARD -->
+  <div class="board-panel">
+    <div class="board-status" id="boardStatus">Ready</div>
+    <div class="board-msg" id="boardMsg">Select attempts and press Start</div>
+    <div class="result-flash" id="resultFlash"></div>
+    <div id="cabinet">
+      <div id="surround">
+        <div id="lamp"></div>
+        <span class="bolt-bl"></span><span class="bolt-br"></span>
+        <svg id="board-svg" viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg">
+          <g id="board-g"></g>
+          <g id="hit-markers"></g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: CHARTS -->
+  <div class="chart-panel">
+
+    <div>
+      <div class="panel-title">Play Results Recording Chart</div>
+      <table class="rec-table">
+        <thead>
+          <tr>
+            <th style="width:24px">#</th>
+            <th>Plays 1–10</th>
+            <th>Plays 11–20</th>
+            <th>Plays 21–30</th>
+            <th>Plays 31–40</th>
+            <th>Plays 41–50</th>
+          </tr>
+        </thead>
+        <tbody id="recBody"></tbody>
+      </table>
+    </div>
+
+    <div>
+      <div class="panel-title">Probability Calculations (Fraction = Decimal)</div>
+      <table class="prob-table">
+        <thead>
+          <tr>
+            <th>Play Range</th>
+            <th>Big Prize</th>
+            <th>Small Prize</th>
+            <th>No Prize</th>
+          </tr>
+        </thead>
+        <tbody id="probBody"></tbody>
+      </table>
+    </div>
+
+    <div class="theory-bar">
+      <strong>Theoretical Probabilities:</strong>
+      <span class="t-big">Big Prize = 0.28</span>
+      &nbsp;|&nbsp;
+      <span class="t-small">Small Prize = 0.58</span>
+      &nbsp;|&nbsp;
+      <span class="t-none">No Prize = 0.14</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- FLYING DART -->
+<div id="dart-fly">
+  <svg viewBox="0 0 14 58" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="7,0 5,11 9,11"        fill="#d8d8d8"/>
+    <polygon points="7,0 5.5,11 7,3"       fill="#f0f0f0"/>
+    <rect x="4.5" y="11" width="5"  height="22" rx="1"    fill="#3c3c3c"/>
+    <rect x="4.5" y="11" width="1.8" height="22" rx="0.5" fill="rgba(255,255,255,0.07)"/>
+    <line x1="4.5" y1="14.5" x2="9.5" y2="14.5" stroke="#555" stroke-width="0.6"/>
+    <line x1="4.5" y1="17.5" x2="9.5" y2="17.5" stroke="#555" stroke-width="0.6"/>
+    <line x1="4.5" y1="20.5" x2="9.5" y2="20.5" stroke="#555" stroke-width="0.6"/>
+    <line x1="4.5" y1="23.5" x2="9.5" y2="23.5" stroke="#555" stroke-width="0.6"/>
+    <line x1="4.5" y1="27"   x2="9.5" y2="27"   stroke="#555" stroke-width="0.6"/>
+    <rect x="5.5" y="33" width="3" height="10" rx="0.6" fill="#1565c0"/>
+    <polygon points="7,43 2,58 5.5,43"  fill="#1565c0"/>
+    <polygon points="7,43 12,58 8.5,43" fill="#1e7fd4"/>
+    <polygon points="7,43 3,56 5,43"    fill="rgba(255,255,255,0.14)"/>
+  </svg>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  SOUND
+// ═══════════════════════════════════════════════════
+let AC = null;
+function initAudio() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === 'suspended') AC.resume();
+}
+function sndThrow() {
+  if (!AC) return;
+  const buf = AC.createBuffer(1, AC.sampleRate*0.22, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.8);
+  const src=AC.createBufferSource(); src.buffer=buf;
+  const f=AC.createBiquadFilter(); f.type='highpass'; f.frequency.value=900;
+  const g=AC.createGain(); g.gain.value=0.08;
+  src.connect(f); f.connect(g); g.connect(AC.destination); src.start();
+}
+function sndHit() {
+  if (!AC) return;
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type='sine';
+  o.frequency.setValueAtTime(200,AC.currentTime);
+  o.frequency.exponentialRampToValueAtTime(55,AC.currentTime+0.14);
+  g.gain.setValueAtTime(0.4,AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.18);
+  o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime+0.18);
+}
+
+// ═══════════════════════════════════════════════════
+//  BUILD BOARD
+// ═══════════════════════════════════════════════════
+(function buildBoard(){
+  const CX=130,CY=130,R_TOTAL=130,R_PLAY=114,R_DBL_IN=108,R_TRP_O=72,R_TRP_I=66,R_B25=11,R_BULL=4,R_NUM=122;
+  const NUMS=[20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
+  const SEG=18,BASE=-90-SEG/2,rad=d=>d*Math.PI/180;
+  function annulus(r1,r2,a,b){
+    const[sa,sb]=[rad(a),rad(b)];
+    const p=[[CX+r2*Math.cos(sa),CY+r2*Math.sin(sa)],[CX+r2*Math.cos(sb),CY+r2*Math.sin(sb)],
+             [CX+r1*Math.cos(sb),CY+r1*Math.sin(sb)],[CX+r1*Math.cos(sa),CY+r1*Math.sin(sa)]];
+    return`M${p[0]}A${r2},${r2},0,0,1,${p[1]}L${p[2]}A${r1},${r1},0,0,0,${p[3]}Z`;
+  }
+  let h=`<circle cx="${CX}" cy="${CY}" r="${R_TOTAL}" fill="#0a0a0a"/>`;
+  NUMS.forEach((num,i)=>{
+    const a=BASE+i*SEG,b=a+SEG,ci=i%2;
+    const sc=ci===0?'#141414':'#EDE5C0', rc=ci===0?'#bf3030':'#1e7a45';
+    h+=`<path d="${annulus(R_DBL_IN,R_PLAY,  a,b)}" fill="${rc}"/>`;
+    h+=`<path d="${annulus(R_TRP_O, R_DBL_IN,a,b)}" fill="${sc}"/>`;
+    h+=`<path d="${annulus(R_TRP_I, R_TRP_O, a,b)}" fill="${rc}"/>`;
+    h+=`<path d="${annulus(R_B25,   R_TRP_I, a,b)}" fill="${sc}"/>`;
+    const wa=rad(a);
+    h+=`<line x1="${CX+R_B25*Math.cos(wa)}" y1="${CY+R_B25*Math.sin(wa)}"
+              x2="${CX+R_PLAY*Math.cos(wa)}" y2="${CY+R_PLAY*Math.sin(wa)}"
+              stroke="#2a2a2a" stroke-width="0.9"/>`;
+    const ma=rad(a+SEG/2);
+    h+=`<text x="${CX+R_NUM*Math.cos(ma)}" y="${CY+R_NUM*Math.sin(ma)}"
+             text-anchor="middle" dominant-baseline="central"
+             font-family="Arial" font-weight="bold" font-size="9.5" fill="#f0f0f0">${num}</text>`;
+  });
+  [R_PLAY,R_DBL_IN,R_TRP_O,R_TRP_I,R_B25].forEach(r=>{
+    h+=`<circle cx="${CX}" cy="${CY}" r="${r}" fill="none" stroke="#2a2a2a" stroke-width="0.9"/>`;
+  });
+  h+=`<circle cx="${CX}" cy="${CY}" r="${R_B25}" fill="#1e7a45"/>`;
+  h+=`<circle cx="${CX}" cy="${CY}" r="${R_BULL}" fill="#bf3030"/>`;
+  h+=`<circle cx="${CX}" cy="${CY}" r="${R_B25}" fill="none" stroke="#2a2a2a" stroke-width="0.9"/>`;
+  h+=`<circle cx="${CX}" cy="${CY}" r="${R_BULL}" fill="none" stroke="#2a2a2a" stroke-width="0.9"/>`;
+  document.getElementById('board-g').innerHTML=h;
+})();
+
+// ═══════════════════════════════════════════════════
+//  SPEED CONFIG
+// ═══════════════════════════════════════════════════
+const SPEED = {
+  slow:   { flight:600, settle:380, betweenThrows:650, showResult:1000, betweenAttempts:450 },
+  medium: { flight:280, settle:180, betweenThrows:300, showResult:580,  betweenAttempts:200 },
+  fast:   { flight:120, settle:0,   betweenThrows:80,  showResult:220,  betweenAttempts:60  },
+};
+let speedMode = 'medium';
+const spd = key => SPEED[speedMode][key];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function setSpeed(mode) {
+  speedMode = mode;
+  document.querySelectorAll('.speed-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase() === mode);
+  });
+}
+function syncSlider() {
+  document.getElementById('badge').textContent = document.getElementById('slider').value;
+}
+
+// ═══════════════════════════════════════════════════
+//  PROBABILITY
+// ═══════════════════════════════════════════════════
+const P_BIG = 0.28, P_SMALL = 0.58;
+
+function pickOutcome() {
+  const r = Math.random();
+  if (r < P_BIG) return 'Big';
+  if (r < P_BIG + P_SMALL) return 'Small';
+  return 'None';
+}
+
+function throwsForOutcome(outcome) {
+  if (outcome === 'Big')  return [true, true];
+  if (outcome === 'None') return [false, false];
+  return Math.random() < 0.5 ? [true, false] : [false, true];
+}
+
+// ═══════════════════════════════════════════════════
+//  DOM
+// ═══════════════════════════════════════════════════
+const dartFly     = document.getElementById('dart-fly');
+const boardSvg    = document.getElementById('board-svg');
+const surround    = document.getElementById('surround');
+const cabinet     = document.getElementById('cabinet');
+const boardStatus = document.getElementById('boardStatus');
+const boardMsg    = document.getElementById('boardMsg');
+const resultFlash = document.getElementById('resultFlash');
+const startBtn    = document.getElementById('startBtn');
+
+let simRunning = false;
+let simResults = [];
+
+// ═══════════════════════════════════════════════════
+//  DART ANIMATION
+// ═══════════════════════════════════════════════════
+function getLandingPos(isHit) {
+  const br = boardSvg.getBoundingClientRect();
+  const bcx = br.left + br.width/2, bcy = br.top + br.height/2, bR = br.width/2;
+  const playR = bR * (114/130);
+  if (isHit) {
+    const a = Math.random()*Math.PI*2, r = Math.sqrt(Math.random())*playR*0.88;
+    return { x: bcx+Math.cos(a)*r, y: bcy+Math.sin(a)*r };
+  } else {
+    const a = Math.random()*Math.PI*2, r = bR+28+Math.random()*55;
+    return { x: bcx+Math.cos(a)*r, y: bcy+Math.sin(a)*r };
+  }
+}
+
+function animateDartFlight(isHit) {
+  return new Promise(resolve => {
+    const land  = getLandingPos(isHit);
+    const br    = boardSvg.getBoundingClientRect();
+    const sx    = br.left + br.width/2;
+    const sy    = window.innerHeight * 0.87;
+    const lx    = land.x, ly = land.y;
+    const T     = spd('flight') / 1000;
+    const g     = 1600;
+    const vx    = (lx-sx)/T;
+    const vy    = (ly-sy-0.5*g*T*T)/T;
+    const initR = Math.atan2(vy,vx)*180/Math.PI+90;
+
+    dartFly.style.cssText = `display:block;left:${sx-7}px;top:${sy-29}px;opacity:1;transition:none;transform-origin:50% 50%;transform:rotate(${initR}deg)`;
+
+    const t0 = performance.now();
+    (function frame(now){
+      const elapsed   = Math.min((now-t0)/1000, T);
+      const progress  = elapsed/T;
+      const x  = sx + vx*elapsed;
+      const y  = sy + vy*elapsed + 0.5*g*elapsed*elapsed;
+      const dvy = vy + g*elapsed;
+      const rot = Math.atan2(dvy,vx)*180/Math.PI+90;
+      const scl = (1.0-progress*0.28).toFixed(3);
+      dartFly.style.left = (x-7)+'px';
+      dartFly.style.top  = (y-29)+'px';
+      dartFly.style.transform = `rotate(${rot}deg) scale(${scl})`;
+      if (elapsed < T) requestAnimationFrame(frame);
+      else resolve({ lx, ly });
+    })(t0);
+
+    sndThrow();
+  });
+}
+
+function showFlash(x, y) {
+  const el = document.createElement('div');
+  Object.assign(el.style, {
+    position:'fixed', left:x+'px', top:y+'px',
+    width:'0', height:'0', borderRadius:'50%',
+    background:'radial-gradient(circle,rgba(255,255,180,0.95),transparent 70%)',
+    transform:'translate(-50%,-50%)',
+    pointerEvents:'none', zIndex:'205',
+    animation:'flashOut 0.38s ease-out forwards'
+  });
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 420);
+}
+
+function addStuckDart(lx, ly) {
+  const sr = surround.getBoundingClientRect();
+  const csScale = sr.width / surround.offsetWidth;
+  const relX = (lx-sr.left)/csScale, relY = (ly-sr.top)/csScale;
+  const spin = (Math.random()-0.5)*40;
+  const el = document.createElement('div');
+  el.className = 'stuck-dart-el';
+  el.style.cssText = `position:absolute;left:${relX-7}px;top:${relY-3}px;width:14px;height:40px;transform-origin:50% 7.5%;transform:perspective(200px) rotateX(-72deg) rotateZ(${spin}deg);pointer-events:none;z-index:12`;
+  el.innerHTML = `<svg viewBox="0 0 14 40" width="14" height="40" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="7" cy="3" r="3" fill="#2a2a2a"/>
+    <rect x="5.5" y="3" width="3" height="12" rx="0.9" fill="#1565c0"/>
+    <polygon points="5.5,13 1,40 5.5,15" fill="#1565c0"/>
+    <polygon points="8.5,13 13,40 8.5,15" fill="#1e7fd4"/>
+    <polygon points="5.5,13 2,38 6,13.5" fill="rgba(255,255,255,0.22)"/>
+  </svg>`;
+  surround.appendChild(el);
+}
+
+function clearStuckDarts() {
+  surround.querySelectorAll('.stuck-dart-el').forEach(el=>el.remove());
+}
+
+async function throwDart(isHit, throwNum) {
+  boardMsg.textContent = `Throw ${throwNum} of 2…`;
+  dartFly.style.display = 'none';
+
+  const { lx, ly } = await animateDartFlight(isHit);
+
+  if (isHit) {
+    sndHit();
+    showFlash(lx, ly);
+    dartFly.style.display = 'none';
+    addStuckDart(lx, ly);
+    boardMsg.textContent = 'Hit!';
+  } else {
+    const t = dartFly.style.transform;
+    const curRot = parseFloat((t.match(/rotate\(([\d.-]+)deg\)/)||[,0])[1]);
+    dartFly.style.transition = 'top 0.45s ease-in,left 0.3s,opacity 0.3s ease-in 0.12s,transform 0.45s';
+    dartFly.style.top    = (parseFloat(dartFly.style.top)  + 140)+'px';
+    dartFly.style.left   = (parseFloat(dartFly.style.left) + (Math.random()-0.5)*36)+'px';
+    dartFly.style.opacity = '0';
+    dartFly.style.transform = `rotate(${curRot+95}deg) scale(0.75)`;
+    boardMsg.textContent = 'Missed!';
+    await sleep(500);
+    dartFly.style.cssText = 'display:none;transition:none';
+  }
+
+  if (spd('settle') > 0) await sleep(spd('settle'));
+}
+
+// ═══════════════════════════════════════════════════
+//  TABLES
+// ═══════════════════════════════════════════════════
+function initTables() {
+  const recBody = document.getElementById('recBody');
+  recBody.innerHTML = '';
+  for (let row=0; row<10; row++) {
+    const tr = document.createElement('tr');
+    const numTd = document.createElement('td');
+    numTd.className = 'cell-num';
+    numTd.textContent = row+1;
+    tr.appendChild(numTd);
+    for (let col=0; col<5; col++) {
+      const td = document.createElement('td');
+      td.className = 'cell-empty';
+      td.id = `c-${col}-${row}`;
+      tr.appendChild(td);
+    }
+    recBody.appendChild(tr);
+  }
+
+  const probBody = document.getElementById('probBody');
+  probBody.innerHTML = '';
+  ['Plays 1–10','Plays 1–20','Plays 1–30','Plays 1–40','Plays 1–50'].forEach((label,i) => {
+    const tr = document.createElement('tr');
+    const lTd = document.createElement('td');
+    lTd.className = 'prob-label';
+    lTd.textContent = label;
+    tr.appendChild(lTd);
+    for (let j=0; j<3; j++) {
+      const td = document.createElement('td');
+      td.className = 'val-em'; td.textContent = '—';
+      td.id = `p-${i}-${j}`;
+      tr.appendChild(td);
+    }
+    probBody.appendChild(tr);
+  });
+}
+
+function highlightNext(index) {
+  document.querySelectorAll('.cell-active').forEach(el => {
+    el.classList.remove('cell-active');
+    if (!el.textContent) el.className = 'cell-empty';
+  });
+  const td = document.getElementById(`c-${Math.floor(index/10)}-${index%10}`);
+  if (td) td.classList.add('cell-active');
+}
+
+function recordResult(index, outcome) {
+  const td = document.getElementById(`c-${Math.floor(index/10)}-${index%10}`);
+  if (!td) return;
+  td.textContent = outcome === 'None' ? 'None' : outcome;
+  td.className = outcome==='Big' ? 'cell-big' : outcome==='Small' ? 'cell-small' : 'cell-none';
+}
+
+function updateProbTable() {
+  [10,20,30,40,50].forEach((max,i) => {
+    const slice = simResults.slice(0, max);
+    const n = slice.length;
+    if (n === 0) return;
+    const bigC   = slice.filter(r=>r==='Big').length;
+    const smallC = slice.filter(r=>r==='Small').length;
+    const noneC  = slice.filter(r=>r==='None').length;
+    [[bigC,'val-big'],[smallC,'val-small'],[noneC,'val-none']].forEach(([c,cls],j) => {
+      const td = document.getElementById(`p-${i}-${j}`);
+      if (td) { td.className=cls; td.textContent=`${c}/${n} = ${(c/n).toFixed(3)}`; }
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  SIMULATION LOOP
+// ═══════════════════════════════════════════════════
+async function runAttempt(index, total) {
+  const outcome = pickOutcome();
+  simResults.push(outcome);
+  const [hit1, hit2] = throwsForOutcome(outcome);
+
+  highlightNext(index);
+  boardStatus.textContent = `Attempt ${index+1} of ${total}`;
+
+  // Throw 1
+  await throwDart(hit1, 1);
+  await sleep(spd('betweenThrows'));
+
+  // Step back if hit1
+  if (hit1) {
+    boardMsg.textContent = 'Step back to 10 ft…';
+    cabinet.style.transition = `transform ${Math.round(spd('betweenThrows')*0.7)}ms ease`;
+    cabinet.style.transform = 'scale(0.63)';
+    await sleep(spd('betweenThrows'));
+  }
+
+  // Throw 2
+  await throwDart(hit2, 2);
+
+  // Flash result
+  const label = outcome==='Big' ? 'BIG PRIZE!' : outcome==='Small' ? 'Small Prize' : 'No Prize';
+  resultFlash.className = `result-flash ${outcome.toLowerCase()}`;
+  resultFlash.textContent = label;
+  await sleep(spd('showResult'));
+  resultFlash.textContent = '';
+  resultFlash.className = 'result-flash';
+
+  // Record in chart
+  recordResult(index, outcome);
+  updateProbTable();
+
+  // Reset board + clear darts
+  cabinet.style.transition = 'none';
+  cabinet.style.transform = 'scale(1)';
+  clearStuckDarts();
+  dartFly.style.cssText = 'display:none;transition:none';
+
+  await sleep(spd('betweenAttempts'));
+}
+
+async function startSim() {
+  if (simRunning) return;
+  initAudio();
+  simRunning = true;
+  simResults = [];
+  initTables();
+  startBtn.disabled = true;
+  document.getElementById('slider').disabled = true;
+
+  const n = parseInt(document.getElementById('slider').value);
+  for (let i=0; i<n && simRunning; i++) {
+    await runAttempt(i, n);
+  }
+
+  document.querySelectorAll('.cell-active').forEach(el => {
+    if (!el.textContent) el.className='cell-empty';
+    else el.classList.remove('cell-active');
+  });
+  boardStatus.textContent = 'Complete';
+  boardMsg.textContent = `${n} attempt${n>1?'s':''} finished`;
+  simRunning = false;
+  startBtn.disabled = false;
+  document.getElementById('slider').disabled = false;
+}
+
+function resetSim() {
+  simRunning = false;
+  simResults = [];
+  clearStuckDarts();
+  dartFly.style.cssText = 'display:none;transition:none';
+  cabinet.style.transition = 'none';
+  cabinet.style.transform = 'scale(1)';
+  resultFlash.textContent = '';
+  resultFlash.className = 'result-flash';
+  boardStatus.textContent = 'Ready';
+  boardMsg.textContent = 'Select attempts and press Start';
+  startBtn.disabled = false;
+  document.getElementById('slider').disabled = false;
+  initTables();
+}
+
+initTables();
+</script>
+</body>
+</html>
