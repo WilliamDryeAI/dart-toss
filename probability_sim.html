@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experimental Probability</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #e9ecef;
+            padding: 24px;
+            color: #222;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 22px;
+            letter-spacing: 1px;
+        }
+        .sim-view {
+            background: white;
+            border: 2px solid #2c3e50;
+            border-radius: 10px;
+            max-width: 860px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .sim-header {
+            background: #2c3e50;
+            color: white;
+            padding: 12px 20px;
+            font-size: 17px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+        .sim-body {
+            padding: 20px;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            background: #f1f3f5;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 22px;
+        }
+        .controls label { font-weight: bold; font-size: 15px; }
+        .slider-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .slider-wrap span { font-size: 13px; color: #666; }
+        input[type="range"] {
+            width: 200px;
+            accent-color: #2c3e50;
+        }
+        .attempts-badge {
+            background: #2c3e50;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            min-width: 48px;
+            text-align: center;
+            border-radius: 6px;
+            padding: 4px 10px;
+        }
+        .btn {
+            padding: 9px 22px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            transition: opacity 0.15s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-run { background: #27ae60; color: white; }
+        .btn-reset { background: #e74c3c; color: white; }
+
+        /* Section titles */
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #444;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 5px;
+            margin-bottom: 12px;
+            margin-top: 20px;
+        }
+
+        /* Recording table */
+        table { border-collapse: collapse; width: 100%; }
+        .rec-table th {
+            background: #2c3e50;
+            color: white;
+            padding: 9px 6px;
+            text-align: center;
+            border: 1px solid #555;
+            font-size: 13px;
+        }
+        .rec-table td {
+            border: 1px solid #bbb;
+            padding: 7px 6px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: bold;
+            height: 34px;
+            min-width: 70px;
+        }
+        .cell-num {
+            background: #f1f3f5;
+            color: #888;
+            font-size: 12px;
+            font-weight: normal;
+            width: 36px;
+        }
+        .cell-big   { background: #fff3cd; color: #856404; }
+        .cell-small { background: #d1e7dd; color: #0f5132; }
+        .cell-none  { background: #f8d7da; color: #842029; }
+        .cell-empty { background: #fff; color: #ccc; }
+
+        /* Probability table */
+        .prob-table th {
+            background: #2c3e50;
+            color: white;
+            padding: 9px 6px;
+            text-align: center;
+            border: 1px solid #555;
+            font-size: 13px;
+        }
+        .prob-table td {
+            border: 1px solid #bbb;
+            padding: 8px 10px;
+            text-align: center;
+            font-size: 13px;
+        }
+        .prob-label {
+            background: #f1f3f5;
+            font-weight: bold;
+            text-align: left !important;
+            padding-left: 14px !important;
+            font-size: 13px;
+        }
+        .val-big   { color: #856404; font-weight: bold; }
+        .val-small { color: #0f5132; font-weight: bold; }
+        .val-none  { color: #842029; font-weight: bold; }
+        .val-em    { color: #bbb; }
+
+        /* Summary */
+        .summary-wrap {
+            display: none;
+            margin-top: 20px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .sum-card {
+            border-radius: 8px;
+            padding: 14px;
+            text-align: center;
+        }
+        .sum-card.big   { background: #fff3cd; border: 1px solid #ffc107; }
+        .sum-card.small { background: #d1e7dd; border: 1px solid #198754; }
+        .sum-card.none  { background: #f8d7da; border: 1px solid #dc3545; }
+        .sum-label { font-size: 13px; font-weight: bold; margin-bottom: 4px; }
+        .sum-count { font-size: 28px; font-weight: bold; }
+        .sum-pct   { font-size: 13px; margin-top: 2px; }
+
+        /* Theoretical bar */
+        .theory-bar {
+            margin-top: 18px;
+            background: #e8f4f8;
+            border: 1px solid #90cde8;
+            border-radius: 7px;
+            padding: 10px 16px;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        .theory-bar strong { display: block; margin-bottom: 4px; font-size: 14px; }
+        .t-big   { color: #856404; font-weight: bold; }
+        .t-small { color: #0f5132; font-weight: bold; }
+        .t-none  { color: #842029; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<h1>Experimental Probability</h1>
+
+<div class="sim-view">
+    <div class="sim-header">SIM VIEW — Experimental Probability Simulator</div>
+    <div class="sim-body">
+
+        <!-- Controls -->
+        <div class="controls">
+            <label>Number of Attempts:</label>
+            <div class="slider-wrap">
+                <span>1</span>
+                <input type="range" id="slider" min="1" max="50" value="10" oninput="syncSlider()">
+                <span>50</span>
+            </div>
+            <div class="attempts-badge" id="badge">10</div>
+            <button class="btn btn-run" onclick="runSim()">Run Simulation</button>
+            <button class="btn btn-reset" onclick="resetSim()">Reset</button>
+        </div>
+
+        <!-- Recording Table -->
+        <div class="section-title">Play Results Recording Chart</div>
+        <table class="rec-table">
+            <thead>
+                <tr>
+                    <th style="width:40px">#</th>
+                    <th>Plays 1–10</th>
+                    <th>Plays 11–20</th>
+                    <th>Plays 21–30</th>
+                    <th>Plays 31–40</th>
+                    <th>Plays 41–50</th>
+                </tr>
+            </thead>
+            <tbody id="recBody"></tbody>
+        </table>
+
+        <!-- Probability Calculation Table -->
+        <div class="section-title">Calculate the Probabilities (Fraction = Decimal)</div>
+        <table class="prob-table">
+            <thead>
+                <tr>
+                    <th>Play Range</th>
+                    <th>Big Prize</th>
+                    <th>Small Prize</th>
+                    <th>No Prize</th>
+                </tr>
+            </thead>
+            <tbody id="probBody"></tbody>
+        </table>
+
+        <!-- Summary Cards -->
+        <div class="summary-wrap" id="summaryWrap">
+            <div class="section-title">Total Results Summary</div>
+            <div class="summary-grid">
+                <div class="sum-card big">
+                    <div class="sum-label">Big Prize</div>
+                    <div class="sum-count" id="sBig">0</div>
+                    <div class="sum-pct" id="pBig">0%</div>
+                </div>
+                <div class="sum-card small">
+                    <div class="sum-label">Small Prize</div>
+                    <div class="sum-count" id="sSmall">0</div>
+                    <div class="sum-pct" id="pSmall">0%</div>
+                </div>
+                <div class="sum-card none">
+                    <div class="sum-label">No Prize</div>
+                    <div class="sum-count" id="sNone">0</div>
+                    <div class="sum-pct" id="pNone">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Theoretical Probabilities -->
+        <div class="theory-bar">
+            <strong>Theoretical Probabilities (from Part 2):</strong>
+            <span class="t-big">Big Prize = 0.28 (28%)</span> &nbsp;&nbsp;
+            <span class="t-small">Small Prize = 0.58 (58%)</span> &nbsp;&nbsp;
+            <span class="t-none">No Prize = 0.14 (14%)</span>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const P_BIG = 0.28;
+    const P_SMALL = 0.58;
+    // P_NONE = 0.14 (remainder)
+
+    let results = [];
+
+    function syncSlider() {
+        document.getElementById('badge').textContent = document.getElementById('slider').value;
+    }
+
+    function pick() {
+        const r = Math.random();
+        if (r < P_BIG) return 'Big';
+        if (r < P_BIG + P_SMALL) return 'Small';
+        return 'None';
+    }
+
+    function runSim() {
+        const n = parseInt(document.getElementById('slider').value);
+        results = Array.from({ length: n }, pick);
+        render();
+    }
+
+    function resetSim() {
+        results = [];
+        render();
+        document.getElementById('summaryWrap').style.display = 'none';
+    }
+
+    function render() {
+        renderRecording();
+        renderProbs();
+        renderSummary();
+    }
+
+    function renderRecording() {
+        const body = document.getElementById('recBody');
+        body.innerHTML = '';
+        const n = results.length;
+
+        for (let row = 0; row < 10; row++) {
+            const tr = document.createElement('tr');
+
+            const numTd = document.createElement('td');
+            numTd.className = 'cell-num';
+            numTd.textContent = row + 1;
+            tr.appendChild(numTd);
+
+            for (let col = 0; col < 5; col++) {
+                const idx = col * 10 + row;
+                const td = document.createElement('td');
+                if (idx < n) {
+                    const r = results[idx];
+                    td.textContent = r === 'None' ? 'None' : r;
+                    td.className = r === 'Big' ? 'cell-big' : r === 'Small' ? 'cell-small' : 'cell-none';
+                } else {
+                    td.className = 'cell-empty';
+                    td.textContent = '';
+                }
+                tr.appendChild(td);
+            }
+            body.appendChild(tr);
+        }
+    }
+
+    function renderProbs() {
+        const body = document.getElementById('probBody');
+        body.innerHTML = '';
+        const n = results.length;
+
+        const milestones = [
+            { label: 'Plays 1–10',  max: 10 },
+            { label: 'Plays 1–20',  max: 20 },
+            { label: 'Plays 1–30',  max: 30 },
+            { label: 'Plays 1–40',  max: 40 },
+            { label: 'Plays 1–50',  max: 50 },
+        ];
+
+        milestones.forEach(({ label, max }) => {
+            const tr = document.createElement('tr');
+
+            const labelTd = document.createElement('td');
+            labelTd.className = 'prob-label';
+            labelTd.textContent = label;
+            tr.appendChild(labelTd);
+
+            const slice = results.slice(0, max);
+            const count = slice.length;
+
+            if (count === 0) {
+                for (let i = 0; i < 3; i++) {
+                    const td = document.createElement('td');
+                    td.className = 'val-em';
+                    td.textContent = '—';
+                    tr.appendChild(td);
+                }
+            } else {
+                const bigC   = slice.filter(r => r === 'Big').length;
+                const smallC = slice.filter(r => r === 'Small').length;
+                const noneC  = slice.filter(r => r === 'None').length;
+
+                [
+                    [bigC,   'val-big'],
+                    [smallC, 'val-small'],
+                    [noneC,  'val-none'],
+                ].forEach(([c, cls]) => {
+                    const td = document.createElement('td');
+                    td.innerHTML = `<span class="${cls}">${c}/${count} = ${(c/count).toFixed(3)}</span>`;
+                    tr.appendChild(td);
+                });
+            }
+
+            body.appendChild(tr);
+        });
+    }
+
+    function renderSummary() {
+        const n = results.length;
+        if (n === 0) return;
+
+        const bigC   = results.filter(r => r === 'Big').length;
+        const smallC = results.filter(r => r === 'Small').length;
+        const noneC  = results.filter(r => r === 'None').length;
+
+        document.getElementById('sBig').textContent   = bigC;
+        document.getElementById('sSmall').textContent = smallC;
+        document.getElementById('sNone').textContent  = noneC;
+        document.getElementById('pBig').textContent   = (bigC/n*100).toFixed(1) + '%';
+        document.getElementById('pSmall').textContent = (smallC/n*100).toFixed(1) + '%';
+        document.getElementById('pNone').textContent  = (noneC/n*100).toFixed(1) + '%';
+
+        document.getElementById('summaryWrap').style.display = 'block';
+    }
+
+    // Initialize empty tables on load
+    render();
+</script>
+</body>
+</html>
