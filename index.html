@@ -523,7 +523,8 @@ function launch(swipeDt){
     const dvx=vx;
     const dvy=vy+g*elapsed; // velocity at this instant
     const rot=Math.atan2(dvy,dvx)*180/Math.PI+90;
-    const scale=1.0-progress*0.55; // shrink from 1.0 → 0.45 as dart reaches board
+    const minScale=isFirst?0.72:0.45; // 6 ft shrinks less than 10 ft
+    const scale=1.0-progress*(1.0-minScale);
     dartFly.style.left=(x-7)+'px';
     dartFly.style.top =(y-29)+'px';
     dartFly.style.transform=`rotate(${rot}deg) scale(${scale.toFixed(3)})`;
