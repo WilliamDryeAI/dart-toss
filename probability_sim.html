@@ -271,9 +271,9 @@
         <!-- Theoretical Probabilities -->
         <div class="theory-bar">
             <strong>Theoretical Probabilities (from Part 2):</strong>
-            <span class="t-big">Big Prize = 0.6241 (62.41%)</span> &nbsp;&nbsp;
-            <span class="t-small">Small Prize = 0.3318 (33.18%)</span> &nbsp;&nbsp;
-            <span class="t-none">No Prize = 0.0441 (4.41%)</span>
+            <span class="t-big">Big Prize = 62%</span> &nbsp;&nbsp;
+            <span class="t-small">Small Prize = 33%</span> &nbsp;&nbsp;
+            <span class="t-none">No Prize = 4%</span>
         </div>
 
     </div>
@@ -369,7 +369,7 @@
             const slice = results.slice(0, max);
             const count = slice.length;
 
-            if (count === 0) {
+            if (count < max) {
                 for (let i = 0; i < 3; i++) {
                     const td = document.createElement('td');
                     td.className = 'val-em';

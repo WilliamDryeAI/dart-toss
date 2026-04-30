@@ -397,11 +397,11 @@
 
     <div class="theory-bar">
       <strong>Theoretical Probabilities:</strong>
-      <span class="t-big">Big Prize = 0.6241</span>
+      <span class="t-big">Big Prize = 62%</span>
       &nbsp;|&nbsp;
-      <span class="t-small">Small Prize = 0.3318</span>
+      <span class="t-small">Small Prize = 33%</span>
       &nbsp;|&nbsp;
-      <span class="t-none">No Prize = 0.0441</span>
+      <span class="t-none">No Prize = 4%</span>
     </div>
 
   </div>
@@ -725,7 +725,7 @@ function updateProbTable() {
   [10,20,30,40,50].forEach((max,i) => {
     const slice = simResults.slice(0, max);
     const n = slice.length;
-    if (n === 0) return;
+    if (n < max) return;
     const bigC   = slice.filter(r=>r==='Big').length;
     const smallC = slice.filter(r=>r==='Small').length;
     const noneC  = slice.filter(r=>r==='None').length;
