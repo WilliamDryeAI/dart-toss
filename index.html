@@ -395,8 +395,10 @@ const startScreen=$('start-screen'), gameScreen=$('game-screen'),
       throwLabel=$('throw-label'), msgEl=$('msg'), cabinet=$('cabinet'),
       distLabel=$('dist-label'), hintEl=$('hint'),
       dartReady=$('dart-ready'), dartFly=$('dart-fly'),
-      hitMarkers=$('hit-markers'), boardSvg=$('board-svg'),
+      hitMarkers=$('hit-markers'), boardSvg=$('board-svg'), surround=$('surround'),
       prizeText=$('prize-text'), prizeSub=$('prize-sub'), confCvs=$('confetti');
+
+const stuckDarts=[];
 
 
 // ═══════════════════════════════════════════════════════
@@ -438,6 +440,7 @@ $('ready-btn').onclick=()=>{
 $('again-btn').onclick=()=>{
   stopConfetti();
   hitMarkers.innerHTML='';
+  stuckDarts.forEach(el=>el.remove()); stuckDarts.length=0;
   dartReady.style.display='none';
   dartFly.style.cssText='display:none;transition:none';
   cabinet.style.transform='scale(1)';
@@ -538,9 +541,7 @@ function onLanded(isHit,isRim,isFirst,lx,ly,br){
     sndHit();
     showFlash(lx,ly);
     wobble(dartFly,()=>{
-      const svgX=(lx-br.left)/br.width*260;
-      const svgY=(ly-br.top)/br.height*260;
-      addStuckDart(svgX,svgY);
+      addStuckDart(lx,ly);
       dartFly.style.display='none';
       isFirst?hit1():hit2();
     });
@@ -562,19 +563,38 @@ function onLanded(isHit,isRim,isFirst,lx,ly,br){
 // ═══════════════════════════════════════════════════════
 //  STUCK DART ON BOARD  — tip at (0,0) toward centre
 // ═══════════════════════════════════════════════════════
-function addStuckDart(svgX,svgY){
-  const jitter=(Math.random()-0.5)*22; // slight random spin so each dart looks natural
-  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-  g.setAttribute('transform',`translate(${svgX},${svgY}) rotate(${jitter})`);
-  // Drawn as front-on view: barrel at (0,0) on board surface, shaft+flights coming toward viewer
-  g.innerHTML=`
-    <circle cx="0" cy="0" r="2.2" fill="#3a3a3a"/>
-    <rect x="-0.9" y="-8" width="1.8" height="8" rx="0.5" fill="#1565c0"/>
-    <polygon points="-0.9,-5  -11,-20  -0.9,-8" fill="#1565c0"/>
-    <polygon points=" 0.9,-5   11,-20   0.9,-8" fill="#1e7fd4"/>
-    <polygon points="-0.9,-5  -9,-17  -0.9,-7" fill="rgba(255,255,255,0.18)"/>
-  `;
-  hitMarkers.appendChild(g);
+function addStuckDart(lx,ly){
+  // Convert screen coords → unscaled CSS coords inside #surround
+  const sr=surround.getBoundingClientRect();
+  const cssScale=sr.width/surround.offsetWidth;
+  const relX=(lx-sr.left)/cssScale;
+  const relY=(ly-sr.top)/cssScale;
+
+  const jitter=(Math.random()-0.5)*38; // spin around dart axis for natural look
+  const w=38, h=28;
+  const el=document.createElement('div');
+  el.style.cssText=[
+    'position:absolute',
+    `left:${relX-w/2}px`,
+    `top:${relY}px`,
+    `width:${w}px`,
+    `height:${h}px`,
+    'transform-origin:50% 0%',
+    // rotateX(-70deg): top (barrel) stays at board, bottom (flights) tilts toward viewer
+    `transform:perspective(90px) rotateX(-70deg) rotateZ(${jitter}deg)`,
+    'pointer-events:none',
+    'z-index:10'
+  ].join(';');
+  const cx=w/2;
+  el.innerHTML=`<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="${cx}" cy="2" rx="3.5" ry="2.2" fill="#3a3a3a"/>
+    <rect x="${cx-2}" y="2" width="4" height="11" rx="1.2" fill="#1565c0"/>
+    <polygon points="${cx-2},10 2,${h} ${cx-4},10" fill="#1565c0"/>
+    <polygon points="${cx+2},10 ${w-2},${h} ${cx+4},10" fill="#1e7fd4"/>
+    <polygon points="${cx-2},10 4,${h-2} ${cx-1},10.5" fill="rgba(255,255,255,0.2)"/>
+  </svg>`;
+  surround.appendChild(el);
+  stuckDarts.push(el);
 }
 
 
