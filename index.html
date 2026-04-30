@@ -398,7 +398,6 @@ const startScreen=$('start-screen'), gameScreen=$('game-screen'),
       hitMarkers=$('hit-markers'), boardSvg=$('board-svg'), surround=$('surround'),
       prizeText=$('prize-text'), prizeSub=$('prize-sub'), confCvs=$('confetti');
 
-const stuckDarts=[];
 
 
 // ═══════════════════════════════════════════════════════
@@ -440,7 +439,6 @@ $('ready-btn').onclick=()=>{
 $('again-btn').onclick=()=>{
   stopConfetti();
   hitMarkers.innerHTML='';
-  stuckDarts.forEach(el=>el.remove()); stuckDarts.length=0;
   dartReady.style.display='none';
   dartFly.style.cssText='display:none;transition:none';
   cabinet.style.transform='scale(1)';
@@ -513,20 +511,23 @@ function launch(swipeDt){
   // Physics: x(t)=sx+vx·t  y(t)=sy+vy·t+½g·t²
   // Solve for vx,vy so the dart hits (lx,ly) at t=T
   const T=Math.max(0.28,Math.min(0.52,0.55-(200/Math.max(swipeDt,40))*0.065));
-  const g=2000; // px/s², simulated gravity (screen-down)
+  const g=900; // px/s² — low gravity keeps trajectory flat like a real forward throw
   const vx=(lx-sx)/T;
   const vy=(ly-sy-0.5*g*T*T)/T;
 
+  // Start dart already angled toward the board so there's no snap on frame 1
+  const initRot=Math.atan2(vy,vx)*180/Math.PI+90;
+  dartFly.style.transform=`rotate(${initRot}deg)`;
+
   const t0=performance.now();
   (function frame(now){
-    const elapsed=Math.min((now-t0)/1000,T); // seconds
+    const elapsed=Math.min((now-t0)/1000,T);
     const progress=elapsed/T;
     const x=sx+vx*elapsed;
     const y=sy+vy*elapsed+0.5*g*elapsed*elapsed;
-    const dvx=vx;
-    const dvy=vy+g*elapsed; // velocity at this instant
-    const rot=Math.atan2(dvy,dvx)*180/Math.PI+90;
-    const minScale=isFirst?0.72:0.45; // 6 ft shrinks less than 10 ft
+    const dvy=vy+g*elapsed;
+    const rot=Math.atan2(dvy,vx)*180/Math.PI+90;
+    const minScale=isFirst?0.72:0.45;
     const scale=1.0-progress*(1.0-minScale);
     dartFly.style.left=(x-7)+'px';
     dartFly.style.top =(y-29)+'px';
@@ -541,7 +542,9 @@ function onLanded(isHit,isRim,isFirst,lx,ly,br){
     sndHit();
     showFlash(lx,ly);
     wobble(dartFly,()=>{
-      addStuckDart(lx,ly);
+      const svgX=(lx-br.left)/br.width*260;
+      const svgY=(ly-br.top)/br.height*260;
+      addStuckDart(svgX,svgY);
       dartFly.style.display='none';
       isFirst?hit1():hit2();
     });
@@ -561,40 +564,23 @@ function onLanded(isHit,isRim,isFirst,lx,ly,br){
 
 
 // ═══════════════════════════════════════════════════════
-//  STUCK DART ON BOARD  — tip at (0,0) toward centre
+//  STUCK DART ON BOARD
 // ═══════════════════════════════════════════════════════
-function addStuckDart(lx,ly){
-  // Convert screen coords → unscaled CSS coords inside #surround
-  const sr=surround.getBoundingClientRect();
-  const cssScale=sr.width/surround.offsetWidth;
-  const relX=(lx-sr.left)/cssScale;
-  const relY=(ly-sr.top)/cssScale;
-
-  const jitter=(Math.random()-0.5)*38; // spin around dart axis for natural look
-  const w=38, h=28;
-  const el=document.createElement('div');
-  el.style.cssText=[
-    'position:absolute',
-    `left:${relX-w/2}px`,
-    `top:${relY}px`,
-    `width:${w}px`,
-    `height:${h}px`,
-    'transform-origin:50% 0%',
-    // rotateX(-70deg): top (barrel) stays at board, bottom (flights) tilts toward viewer
-    `transform:perspective(90px) rotateX(-70deg) rotateZ(${jitter}deg)`,
-    'pointer-events:none',
-    'z-index:10'
-  ].join(';');
-  const cx=w/2;
-  el.innerHTML=`<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="${cx}" cy="2" rx="3.5" ry="2.2" fill="#3a3a3a"/>
-    <rect x="${cx-2}" y="2" width="4" height="11" rx="1.2" fill="#1565c0"/>
-    <polygon points="${cx-2},10 2,${h} ${cx-4},10" fill="#1565c0"/>
-    <polygon points="${cx+2},10 ${w-2},${h} ${cx+4},10" fill="#1e7fd4"/>
-    <polygon points="${cx-2},10 4,${h-2} ${cx-1},10.5" fill="rgba(255,255,255,0.2)"/>
-  </svg>`;
-  surround.appendChild(el);
-  stuckDarts.push(el);
+function addStuckDart(svgX,svgY){
+  // Dart hangs from the hit point like a real dart on a wall-mounted board.
+  // Barrel sits at (0,0), shaft + flights droop downward. Slight random
+  // lean keeps multiple darts looking natural.
+  const jitter=(Math.random()-0.5)*18;
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('transform',`translate(${svgX},${svgY}) rotate(${jitter})`);
+  g.innerHTML=`
+    <circle cx="0" cy="0" r="2.4" fill="#2e2e2e"/>
+    <rect x="-1.3" y="0" width="2.6" height="9" rx="0.9" fill="#1565c0"/>
+    <polygon points="-1.3,7  -10,20  -1.3,9" fill="#1565c0"/>
+    <polygon points=" 1.3,7   10,20   1.3,9" fill="#1e7fd4"/>
+    <polygon points="-1.3,7  -8.5,18 -1.3,8.5" fill="rgba(255,255,255,0.22)"/>
+  `;
+  hitMarkers.appendChild(g);
 }
 
 
