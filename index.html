@@ -560,15 +560,16 @@ function onLanded(isHit,isRim,isFirst,lx,ly,br){
 //  STUCK DART ON BOARD  — tip at (0,0) toward centre
 // ═══════════════════════════════════════════════════════
 function addStuckDart(svgX,svgY){
-  const dist=Math.hypot(130-svgX,130-svgY);
-  const rot=dist<4?180:Math.atan2(130-svgY,130-svgX)*180/Math.PI+90;
+  const jitter=(Math.random()-0.5)*22; // slight random spin so each dart looks natural
   const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-  g.setAttribute('transform',`translate(${svgX},${svgY}) rotate(${rot})`);
+  g.setAttribute('transform',`translate(${svgX},${svgY}) rotate(${jitter})`);
+  // Drawn as front-on view: barrel at (0,0) on board surface, shaft+flights coming toward viewer
   g.innerHTML=`
-    <rect x="-1.5" y="22.5" width="3" height="7" rx="0.5" fill="#1565c0"/>
-    <polygon points="0,29.5 -4.5,40 -1.5,29.5" fill="#1565c0"/>
-    <polygon points="0,29.5  4.5,40  1.5,29.5" fill="#1e7fd4"/>
-    <polygon points="0,29.5 -3.5,39 -0.5,29.5" fill="rgba(255,255,255,0.15)"/>
+    <circle cx="0" cy="0" r="2.2" fill="#3a3a3a"/>
+    <rect x="-0.9" y="-8" width="1.8" height="8" rx="0.5" fill="#1565c0"/>
+    <polygon points="-0.9,-5  -11,-20  -0.9,-8" fill="#1565c0"/>
+    <polygon points=" 0.9,-5   11,-20   0.9,-8" fill="#1e7fd4"/>
+    <polygon points="-0.9,-5  -9,-17  -0.9,-7" fill="rgba(255,255,255,0.18)"/>
   `;
   hitMarkers.appendChild(g);
 }
