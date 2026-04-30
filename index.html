@@ -538,7 +538,6 @@ function onLanded(isHit,isRim,isFirst,lx,ly,br){
       const svgX=(lx-br.left)/br.width*260;
       const svgY=(ly-br.top)/br.height*260;
       addStuckDart(svgX,svgY);
-      showScoreLabel(lx,ly,getHitZone(svgX,svgY));
       dartFly.style.display='none';
       isFirst?hit1():hit2();
     });
