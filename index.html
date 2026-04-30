@@ -55,7 +55,7 @@
     #msg { font-size:0.96rem; text-align:center; color:rgba(255,220,170,0.9); min-height:24px; }
 
     /* Cabinet — the element that scales for distance */
-    #cabinet { position:relative; transition:transform 1.3s cubic-bezier(0.4,0,0.2,1); margin-top:4px; }
+    #cabinet { position:relative; transition:transform 1.3s cubic-bezier(0.4,0,0.2,1); margin-top:30px; }
 
     /* Wooden surround */
     #surround {
@@ -517,14 +517,16 @@ function launch(swipeDt){
   const t0=performance.now();
   (function frame(now){
     const elapsed=Math.min((now-t0)/1000,T); // seconds
+    const progress=elapsed/T;
     const x=sx+vx*elapsed;
     const y=sy+vy*elapsed+0.5*g*elapsed*elapsed;
     const dvx=vx;
     const dvy=vy+g*elapsed; // velocity at this instant
     const rot=Math.atan2(dvy,dvx)*180/Math.PI+90;
+    const scale=1.0-progress*0.55; // shrink from 1.0 → 0.45 as dart reaches board
     dartFly.style.left=(x-7)+'px';
     dartFly.style.top =(y-29)+'px';
-    dartFly.style.transform=`rotate(${rot}deg)`;
+    dartFly.style.transform=`rotate(${rot}deg) scale(${scale.toFixed(3)})`;
     if(elapsed<T) requestAnimationFrame(frame);
     else          onLanded(isHit,isRim,isFirst,lx,ly,br);
   })(t0);
